@@ -302,12 +302,12 @@ class MPU6050:
 
     def read_temperature_degrees(self) -> float:
         """
-        Read the celcius value from the temperature sensor.
+        Read the celsius value from the temperature sensor.
 
         Returns:
-            The reading of the temperature sensor in celcius degrees.
+            The reading of the temperature sensor in celsius degrees.
         """
         reading = self.read_temperature_raw()
 
-        # Datasheet tells us the temperature in degrees celcius should be (TEMP_OUT / 340 + 36.53)
+        # Datasheet tells us the temperature in degrees celsius should be (TEMP_OUT / 340 + 36.53)
         return reading / 340 + 36.53
