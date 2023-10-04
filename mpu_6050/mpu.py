@@ -73,6 +73,20 @@ class AccelerometerRange:
     range_16g = (0b11, 16.0)
 
 
+class ClockSource:
+    """
+    The different clock sources available for the MPU-6050.
+    """
+
+    internal_oscillator = 0
+    gyroscope_x = 1
+    gyroscope_y = 2
+    gyroscope_z = 3
+    external_32_khz = 4
+    external_19_mhz = 5
+    stop_clock = 7
+
+
 class MPU6050:
     """
     A class to interact with a MPU-6050 sensor over I2C.
@@ -87,6 +101,7 @@ class MPU6050:
         """
         Initialize a new Mpu6050 instance.
         This will also automatically wake up the component and configure the sensor ranges to default values.
+        This also sets the clock source to the Y gyroscope output.
 
         Parameters:
             i2c: The I2C class to interact with.
@@ -97,6 +112,7 @@ class MPU6050:
         self.address = address
 
         self.wake_up()
+        self.set_clock_source(ClockSource.gyroscope_y)
         self.set_gyroscope_range(GyroscopeRange.range_250)
         self.set_accelerometer_range(AccelerometerRange.range_2g)
 
@@ -170,6 +186,22 @@ class MPU6050:
             transaction.write(Registers.ACCEL_CONFIG, write_value)
 
         self.accelerometer_scale = scale
+
+    def set_clock_source(self, option: int):
+        """
+        Set the clock source of the compnent.
+
+        Parameters:
+            option: A value from ClockSource.
+        """
+        with self.start_transaction() as transaction:
+            read_value = transaction.read_int(Registers.PWR_MGMT_1, 1)
+
+            write_value = set_bit(read_value, 0, get_bit(option, 0))
+            write_value = set_bit(write_value, 1, get_bit(option, 2))
+            write_value = set_bit(write_value, 1, get_bit(option, 3))
+
+            transaction.write(Registers.PWR_MGMT_1, write_value)
 
     def read_gyroscope_raw(self) -> tuple:
         """
@@ -253,7 +285,7 @@ class MPU6050:
             reading[1] * gravitational_g,
             reading[2] * gravitational_g,
         )
-        return scaled_reading 
+        return scaled_reading
 
     def read_temperature_raw(self) -> int:
         """
@@ -261,11 +293,11 @@ class MPU6050:
         The integer value will be in the range of -32768 to 32767.
 
         Returns:
-            The integer value of the temperature reading.    
+            The integer value of the temperature reading.
         """
         with self.start_transaction() as transaction:
             reading = transaction.read_int(Registers.TEMP_OUT, 2, signed=True)
-        
+
         return reading
 
     def read_temperature_degrees(self) -> float:
@@ -273,10 +305,9 @@ class MPU6050:
         Read the celcius value from the temperature sensor.
 
         Returns:
-            The reading of the temperature sensor in celcius degrees.    
+            The reading of the temperature sensor in celcius degrees.
         """
         reading = self.read_temperature_raw()
 
         # Datasheet tells us the temperature in degrees celcius should be (TEMP_OUT / 340 + 36.53)
         return reading / 340 + 36.53
-
